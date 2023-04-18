@@ -32,3 +32,18 @@ nano  /etc/privoxy/config
 ```
 forward-socks5 / 127.0.0.1:9050 .
 ```
+4. Настройте маршрутизацию трафика
+
+Отредактируйте файл конфигурации /etc/sysctl.conf и раскомментируйте строку net.ipv4.ip_forward=1.
+```
+nano /etc/sysctl.conf
+```
+5. Введите следующую команду для активации изменений в конфигурации:
+
+```
+sudo sysctl -p
+```
+6. Добавьте правило iptables для перенаправления трафика через прокси-сервер:
+```
+sudo iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 8118
+```
