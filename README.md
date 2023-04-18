@@ -47,3 +47,50 @@ sudo sysctl -p
 ```
 sudo iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 8118
 ```
+Теперь весь ваш трафик должен быть перенаправлен через Tor. Вы можете проверить это, посетив сайт, который показывает ваш IP-адрес, и убедившись, что он отображает IP-адрес Tor сети или ввести команду в терминале:
+```
+curl ident.me
+```
+7. Создайте скрипт в папке /usr/local/bin. Эта папка обычно используется для хранения пользовательских бинарных файлов.
+```
+sudo nano /usr/local/bin/tort.sh
+```
+8. Добавьте туда следующий текст:
+```
+#!/bin/bash
+iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 8118
+```
+9. Когда скрипт будет готов, сделайте его исполняемым:
+```
+sudo chmod ugo+x /usr/local/bin/tort.sh
+```
+10. В Systemd нет способа запускать все пользовательские скрипты в одном месте. Но вы можете создать юнит файл, который будет запускать ваш скрипт. Для этого используйте следующую команду:
+```
+sudo systemctl edit --force --full script.service
+```
+Команда откроет текстовый редактор, добавьте в него такое содержимое:
+```
+[Unit]
+Description=My Script Service
+After=multi-user.target
+[Service]
+Type=idle
+ExecStart=/usr/local/bin/tort.sh
+[Install]
+WantedBy=multi-user.target
+```
+В строчке ExecStart можно прописать либо путь к скрипту, который надо выполнить, либо саму команду (iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 8118) но так удобно, можно просто редактировать скрипт добавляя туда свои команды, которые вы хотели бы в дальнейшем запускать при запуске системы.
+
+11. Теперь добавьте этот скрипт в автозагрузку:
+```
+sudo systemctl enable srcipt
+```
+12. Если Systemd не видит такого сервиса, обновите информацию о юнитах с помощью команды:
+```
+sudo systemctl daemon-reload
+```
+
+
+
+
+
