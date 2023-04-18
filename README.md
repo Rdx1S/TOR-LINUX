@@ -9,4 +9,26 @@
 sudo apt update && sudo apt upgrade -y
 sudo apt nstall tor
 ```
+2. Настройте Tor, отредактировав файл конфигурации /etc/tor/torrc 
 
+```
+nano /etc/tor/torrc
+```
+Раскомментируйте строку #SocksPort 9050 и установите SocksPort 9050 (или любой другой свободный порт) в качестве порта SOCKS. 
+
+3. Установите прокси-сервер privoxy:
+
+```
+sudo apt install privoxy
+```
+Отредактируйте файл конфигурации privoxy /etc/privoxy/config. 
+```
+nano  /etc/privoxy/config
+```
+
+Раскомментируйте строку listen-address localhost:8118 и замените localhost на 127.0.0.1.
+Добавьте следующие строки в конец файла конфигурации privoxy:
+
+```
+forward-socks5 / 127.0.0.1:9050 .
+```
