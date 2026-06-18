@@ -1,96 +1,168 @@
-# TOR-LINUX
-Настройка проброса всего трафика на Kali Linux через TOR и добавление команды в автозагрузку
+# 🧅 Route All Traffic Through Tor on Kali Linux
 
-Чтобы пробросить весь трафик в Kali Linux через Tor, вам нужно выполнить несколько шагов:
+<div align="center">
 
-1. Установите Tor, выполнив следующую команду в терминале:
+**English** · [Українська](README.uk.md)
 
-```
+Force **all** outgoing traffic on Kali Linux through the Tor network, and make it persist across reboots with a systemd service.
+
+![Tor](https://img.shields.io/badge/Tor-7E4798?style=for-the-badge&logo=torproject&logoColor=white)
+![Kali Linux](https://img.shields.io/badge/Kali_Linux-557C94?style=for-the-badge&logo=kalilinux&logoColor=white)
+
+</div>
+
+> ⚠️ **For educational and authorized use only.** Routing all traffic through Tor changes your network behavior significantly. Use it responsibly and only on systems you own or are permitted to test.
+
+---
+
+## 📑 Table of Contents
+
+- [1. Install Tor](#1-install-tor)
+- [2. Configure Tor](#2-configure-tor)
+- [3. Install Privoxy](#3-install-privoxy)
+- [4. Enable IP forwarding](#4-enable-ip-forwarding)
+- [5. Apply the changes](#5-apply-the-changes)
+- [6. Redirect traffic with iptables](#6-redirect-traffic-with-iptables)
+- [7–12. Persist across reboots](#7-12-persist-across-reboots)
+
+---
+
+## 1. Install Tor
+
+```bash
 sudo apt update && sudo apt upgrade -y
-sudo apt nstall tor
+sudo apt install tor
 ```
-2. Настройте Tor, отредактировав файл конфигурации /etc/tor/torrc 
 
-```
-nano /etc/tor/torrc
-```
-Раскомментируйте строку #SocksPort 9050 и установите SocksPort 9050 (или любой другой свободный порт) в качестве порта SOCKS. 
+---
 
-3. Установите прокси-сервер privoxy:
+## 2. Configure Tor
 
+Edit the Tor configuration file:
+
+```bash
+sudo nano /etc/tor/torrc
 ```
+
+Uncomment the `SocksPort 9050` line (or set any other free port) as the SOCKS port.
+
+---
+
+## 3. Install Privoxy
+
+```bash
 sudo apt install privoxy
 ```
-Отредактируйте файл конфигурации privoxy /etc/privoxy/config. 
-```
-nano  /etc/privoxy/config
+
+Edit the Privoxy configuration:
+
+```bash
+sudo nano /etc/privoxy/config
 ```
 
-Раскомментируйте строку listen-address localhost:8118 и замените localhost на 127.0.0.1.
-Добавьте следующие строки в конец файла конфигурации privoxy:
+- Uncomment `listen-address localhost:8118` and replace `localhost` with `127.0.0.1`.
+- Add the following line to the **end** of the file to forward traffic to Tor:
 
 ```
 forward-socks5 / 127.0.0.1:9050 .
 ```
-4. Настройте маршрутизацию трафика
 
-Отредактируйте файл конфигурации /etc/sysctl.conf и раскомментируйте строку net.ipv4.ip_forward=1.
+---
+
+## 4. Enable IP forwarding
+
+Edit the sysctl configuration:
+
+```bash
+sudo nano /etc/sysctl.conf
 ```
-nano /etc/sysctl.conf
-```
-5. Введите следующую команду для активации изменений в конфигурации:
+
+Uncomment the line:
 
 ```
+net.ipv4.ip_forward=1
+```
+
+---
+
+## 5. Apply the changes
+
+```bash
 sudo sysctl -p
 ```
-6. Добавьте правило iptables для перенаправления трафика через прокси-сервер:
-```
+
+---
+
+## 6. Redirect traffic with iptables
+
+Add a NAT rule that redirects outgoing TCP traffic through Privoxy:
+
+```bash
 sudo iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 8118
 ```
-Теперь весь ваш трафик должен быть перенаправлен через Tor. Вы можете проверить это, посетив сайт, который показывает ваш IP-адрес, и убедившись, что он отображает IP-адрес Tor сети или ввести команду в терминале:
-```
+
+All your traffic should now be routed through Tor. Verify it by checking your public IP — it should belong to the Tor network:
+
+```bash
 curl ident.me
 ```
-7. Создайте скрипт в папке /usr/local/bin. Эта папка обычно используется для хранения пользовательских бинарных файлов.
-```
+
+---
+
+## 7–12. Persist across reboots
+
+The iptables rule resets on reboot. Wrap it in a script and register it as a systemd service so it runs automatically.
+
+**7. Create a script** in `/usr/local/bin` (the standard location for custom binaries):
+
+```bash
 sudo nano /usr/local/bin/tort.sh
 ```
-8. Добавьте туда следующий текст:
-```
+
+**8. Add the following:**
+
+```bash
 #!/bin/bash
 iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 8118
 ```
-9. Когда скрипт будет готов, сделайте его исполняемым:
-```
+
+**9. Make it executable:**
+
+```bash
 sudo chmod ugo+x /usr/local/bin/tort.sh
 ```
-10. В Systemd нет способа запускать все пользовательские скрипты в одном месте. Но вы можете создать юнит файл, который будет запускать ваш скрипт. Для этого используйте следующую команду:
-```
+
+**10. Create a systemd unit** that runs the script:
+
+```bash
 sudo systemctl edit --force --full script.service
 ```
-Команда откроет текстовый редактор, добавьте в него такое содержимое:
-```
+
+This opens a text editor — paste:
+
+```ini
 [Unit]
 Description=My Script Service
 After=multi-user.target
+
 [Service]
 Type=idle
 ExecStart=/usr/local/bin/tort.sh
+
 [Install]
 WantedBy=multi-user.target
 ```
-В строчке ExecStart можно прописать либо путь к скрипту, который надо выполнить, либо саму команду `iptables -t nat -A OUTPUT -p tcp -j REDIRECT --to-ports 8118` но так удобнее, можно просто редактировать скрипт добавляя туда свои команды, которые вы хотели бы в дальнейшем запускать при запуске системы.
 
-11. Теперь добавьте этот скрипт в автозагрузку:
+> 💡 In `ExecStart` you can specify either the path to the script or the raw `iptables` command directly. Using a script is more convenient — you can simply edit it to add more commands to run at boot.
+
+**11. Enable the service** so it starts on boot:
+
+```bash
+sudo systemctl enable script
 ```
-sudo systemctl enable srcipt
-```
-12. Если Systemd не видит такого сервиса, обновите информацию о юнитах с помощью команды:
-```
+
+**12. If systemd doesn't see the service,** reload the unit definitions:
+
+```bash
 sudo systemctl daemon-reload
 ```
-
-
-
-
-
